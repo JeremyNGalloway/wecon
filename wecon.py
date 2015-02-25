@@ -2,6 +2,11 @@
 #wecon.py
 #finds fun things on the internet
 
+import argparse
+from pprint import pprint
+import requests
+import re
+
 
 from pprint import pprint
 import requests
@@ -10,69 +15,87 @@ from BeautifulSoup import BeautifulSoup
 requests.packages.urllib3.disable_warnings()  #suppress invalid ssl cert warning
 
 try_http = 'http://'
-try_SSL = 'https://'  #testips will be an imported file
-testips = ['X:10000', 'X:80', 'X:80', 'X:8444', 'X:80']
+try_SSL = 'https://'
+target_count = 0  
 
-for testip in testips:  #master loop. iterates through all ip:port combinations. try http first then try ssl
-	try:
-		r = requests.get(try_http + testip, verify=False, allow_redirects=True,
-		                 timeout=5.00)  #makes HTTP connections, gets data
-		print r.url, 'Response:', r.status_code  #prints data
-		if r.history:
-			pprint('Followed redirection')  #notifies if request was redirect from server (302)
-		pprint(r.headers)
-		if r.text:
-			try:
-				soup = BeautifulSoup(r.text)
-				print '** Extracted title: ' + soup.title.string + ' **'
-				desc = soup.findAll(attrs={"name":"description"})
-				print '** Extracted Description: ' + desc[0]['content']
-				login = soup.findAll(attrs={"name":"login"})
-				print '** Found login form to brute :> **'
-			except AttributeError:
-				pass
-			except IndexError:
-				pass
-		if 'server' in r.headers:  #prints server name if present
-			print '** Running server ' + r.headers['server'] + ' **'
-		if 'etag' in r.headers:
-			print '** HP Internal Application - Found etag in headers ' + r.headers['etag'] + ' **'
-		if 'set-cookie' in r.headers:
-			print '** Server sent cookie ' + r.headers['set-cookie'] + ' **'
-	except requests.exceptions.ConnectionError:  #catches servers refusing to communicate
-		pprint('HTTP Connection to ' + str(testip) + ' actively refused')
-	except requests.exceptions.ReadTimeout:  #catches servers too slow to communicate
-		pprint('HTTP Connection to ' + str(testip) + ' timed out')
+parser = argparse.ArgumentParser(description='Process IP:PORT file') 
+parser.add_argument('ipfile', type=argparse.FileType('r'))
+args = parser.parse_args() #reads first arg as 'ipfile' and treats it as a file 
 
-	try:
-		r = requests.get(try_SSL + testip, verify=False, allow_redirects=True,
-		                 timeout=5.00)  #makes SSL connections, gets data
-		print r.url, 'Response:', r.status_code  #prints data
-		if r.history:
-			pprint('Followed redirection')  #notifies if request was redirect from server (302)
-		pprint(r.headers)
-		if r.text:
-			try:
-				soup = BeautifulSoup(r.text)
-				print '** Extracted title: ' + soup.title.string + ' **'
-				desc = soup.findAll(attrs={"name":"description"})
-				print '** Extracted Description: ' + desc[0]['content']
-				login = soup.findAll(attrs={"name":"login"})
-				print '** Found login form to brute :> **'
-			except AttributeError:
-				pass
-			except IndexError:
-				pass
-		if 'server' in r.headers:  #prints server name if present
-			print '** Running server ' + r.headers['server'] + ' **'
-		if 'etag' in r.headers:
-			print '** HP Internal Application - Found etag in headers ' + r.headers['etag'] + ' **'
-		if 'set-cookie' in r.headers:
-			print '** Server sent cookie ' + r.headers['set-cookie'] + ' **'
-		print
-	except requests.exceptions.ConnectionError:
-		pprint('SSL Connection to ' + str(testip) + ' actively refused')
-		print
-	except requests.exceptions.ReadTimeout:
-		pprint('SSL Connection to ' + str(testip) + ' timed out')
-		print
+print #print a blank line to the console for readability
+for testip in args.ipfile.readlines(): #master loop. iterates through all ip:port combinations try http first then try ssl
+    target_count = target_count +1
+    print testip.rstrip() + ' <---Target #' + str(target_count)
+    try:
+        r = requests.get(try_http + testip.rstrip(), verify=False, allow_redirects=True, timeout=5.00)  #makes HTTP connections, gets data
+        print r.url
+        print 'Status code:', r.status_code
+        pprint(r.headers)
+        if r.history:
+            print ">>Followed redirection<<"  #notifies if request was redirect from server (3XX)
+        if r.status_code == 401:
+            print '** Found BASIC AUTH to brute :> **'
+        if r.text:
+            try:
+             soup = BeautifulSoup(r.text)
+             print '** Extracted title: ' + soup.title.string + ' **'
+             desc = soup.findAll(attrs={"name":"description"})
+             print '** Extracted Description: ' + desc[0]['content']
+             password = re.search('password*', r.text)
+             print '** Found password form to brute :> **'
+            except AttributeError:
+                pass
+            except IndexError:
+                pass
+        if 'server' in r.headers:  #prints server name if present
+            print '** Running server ' + r.headers['server'] + ' **'
+        if 'etag' in r.headers:
+            print '** HP Internal Application - Found etag in headers ' + r.headers['etag'] + ' **'
+        if 'set-cookie' in r.headers:
+            print '** Server sent a cookie **'
+        if 'www-authenticate' in r.headers:
+            print '** Found REALM ' + r.headers['www-authenticate']
+    except requests.exceptions.ConnectionError:
+        print 'HTTP Connection to ' + str(testip).rstrip() + ' actively refused'
+    except requests.exceptions.ReadTimeout:
+        print 'HTTP Connection to ' + str(testip) + ' timed out'
+    print ':::Attempting SSL handshake:::'
+
+    try:
+        r = requests.get(try_SSL + testip.rstrip(), verify=False, allow_redirects=True, timeout=5.00)  #makes SSL connections, gets data
+        print r.url
+        print 'Status code:', r.status_code
+        pprint(r.headers)
+        if r.history:
+            print ">>Followed redirection<<"  #notifies if request was redirect from server (3XX)
+        if r.status_code == 401:
+            print '** Found BASIC AUTH to brute :> **'
+        if r.text:
+            try:
+                soup = BeautifulSoup(r.text)
+                print '** Extracted title: ' + soup.title.string + ' **'
+                desc = soup.findAll(attrs={"name":"description"})
+                print '** Extracted Description: ' + desc[0]['content']
+                password = re.search('password*', r.text)
+                print '** Found password form to brute :> **'
+            except AttributeError:
+                pass
+            except IndexError:
+                pass
+        if 'server' in r.headers:  #prints server name if present
+            print '** Running server ' + r.headers['server'] + ' **'
+        if 'etag' in r.headers:
+            print '** HP Internal Application - Found etag in headers ' + r.headers['etag'] + ' **'
+        if 'set-cookie' in r.headers:
+            print '** Server sent a cookie **'
+        if 'www-authenticate' in r.headers:
+            print '** Found REALM ' + r.headers['www-authenticate']
+        print
+    except requests.exceptions.ConnectionError:
+        print 'SSL Connection to ' + str(testip).rstrip() + ' actively refused'
+        print
+    except requests.exceptions.ReadTimeout:
+        print 'SSL Connection to ' + str(testip).rstrip() + ' timed out'
+        print
+    print
+    print 
