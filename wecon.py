@@ -3,14 +3,10 @@
 #finds fun things on the internet
 
 import argparse
-from pprint import pprint
-import requests
-import re
-
-
-from pprint import pprint
-import requests
 from BeautifulSoup import BeautifulSoup
+from pprint import pprint
+import re
+import requests
 
 requests.packages.urllib3.disable_warnings()  #suppress invalid ssl cert warning
 
