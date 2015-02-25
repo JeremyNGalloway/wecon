@@ -17,6 +17,7 @@ requests.packages.urllib3.disable_warnings()  #suppress invalid ssl cert warning
 try_http = 'http://'
 try_SSL = 'https://'
 target_count = 0  
+URI = '' #'/robots.txt' #check web server for specific URIs such as /cgi-bin, /gdorks, /vuln
 
 parser = argparse.ArgumentParser(description='Process IP:PORT file') 
 parser.add_argument('ipfile', type=argparse.FileType('r'))
@@ -25,6 +26,10 @@ args = parser.parse_args() #reads first arg as 'ipfile' and treats it as a file
 print #print a blank line to the console for readability
 for testip in args.ipfile.readlines(): #master loop. iterates through all ip:port combinations try http first then try ssl
     target_count = target_count +1
+    if URI:
+        testip = testip.rstrip() + URI
+        print 'Searching for URI ' + URI
+        
     print testip.rstrip() + ' <---Target #' + str(target_count)
     try:
         r = requests.get(try_http + testip.rstrip(), verify=False, allow_redirects=True, timeout=5.00)  #makes HTTP connections, gets data
