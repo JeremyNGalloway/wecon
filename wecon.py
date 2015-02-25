@@ -76,4 +76,3 @@ for testip in testips:  #master loop. iterates through all ip:port combinations.
 	except requests.exceptions.ReadTimeout:
 		pprint('SSL Connection to ' + str(testip) + ' timed out')
 		print
-
