@@ -12,7 +12,7 @@ requests.packages.urllib3.disable_warnings()  #suppress invalid ssl cert warning
 try_http = 'http://'
 try_SSL = 'https://'
 target_count = 0  
-URI = '/extender.html' #'/robots.txt' #check web server for specific URIs such as /cgi-bin, /gdorks, /vuln
+URI = '' #'/robots.txt' #check web server for specific URIs such as /cgi-bin, /gdorks, /vuln
 
 parser = argparse.ArgumentParser(description='Process IP:PORT file') 
 parser.add_argument('ipfile', type=argparse.FileType('r'))
@@ -40,12 +40,14 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
                 if 'password' in r.text:
                     print '** Found HTTP password form to brute :> **'
                 soup = BeautifulSoup(r.text)
-                print '** Extracted title: ' + soup.title.string + ' **'
+                print '** Extracted title: ' + soup.title.string.encode('utf8') + ' **'
                 desc = soup.findAll(attrs={"name":"description"})
                 print '** Extracted Description: ' + desc[0]['content']
             except AttributeError:
                 pass
             except IndexError:
+                pass
+            except TypeError:
                 pass
         if 'server' in r.headers:  #prints server name if present
             print '** Running server ' + r.headers['server'] + ' **'
@@ -75,12 +77,14 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
                 if 'password' in r.text:
                     print '** Found SSL password form to brute :> **'
                 soup = BeautifulSoup(r.text)
-                print '** Extracted title: ' + soup.title.string + ' **'
+                print '** Extracted title: ' + soup.title.string.encode('utf8') + ' **'
                 desc = soup.findAll(attrs={"name":"description"})
                 print '** Extracted Description: ' + desc[0]['content']
             except AttributeError:
                 pass
             except IndexError:
+                pass
+            except TypeError:
                 pass        
         if 'server' in r.headers:  #prints server name if present
             print '** Running server ' + r.headers['server'] + ' **'
