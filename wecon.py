@@ -39,16 +39,20 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
             try:
                 if 'password' in r.text:
                     print '** Found HTTP password form to brute :> **'
+                if 'web_section_id' in r.text:
+                    print '** Found internal HP web_section_id **'
                 soup = BeautifulSoup(r.text)
                 print '** Extracted title: ' + soup.title.string.encode('utf8') + ' **'
                 desc = soup.findAll(attrs={"name":"description"})
-                print '** Extracted Description: ' + desc[0]['content']
+                print '** Extracted Description: ' + str(desc[0]['content']).encode(encoding='utf-8',errors='ignore')
             except AttributeError:
                 pass
             except IndexError:
                 pass
             except TypeError:
                 pass
+            except UnicodeEncodeError:
+                pass #from description
         if 'server' in r.headers:  #prints server name if present
             print '** Running server ' + r.headers['server'] + ' **'
         if 'etag' in r.headers:
@@ -60,7 +64,7 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
     except requests.exceptions.ConnectionError:
         print 'HTTP Connection to ' + str(testip).rstrip() + ' actively refused'
     except requests.exceptions.ReadTimeout:
-        print 'HTTP Connection to ' + str(testip) + ' timed out after 5.00 seconds'
+        print 'HTTP Connection to ' + str(testip).rstrip() + ' timed out after 5.00 seconds'
     print ':::Attempting SSL handshake:::'
 
     try:
@@ -76,16 +80,20 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
             try:
                 if 'password' in r.text:
                     print '** Found SSL password form to brute :> **'
+                if 'web_section_id' in r.text:
+                    print '** Found internal HP web_section_id **'
                 soup = BeautifulSoup(r.text)
                 print '** Extracted title: ' + soup.title.string.encode('utf8') + ' **'
                 desc = soup.findAll(attrs={"name":"description"})
-                print '** Extracted Description: ' + desc[0]['content']
+                print '** Extracted Description: ' + str(desc[0]['content']).encode(encoding='utf-8',errors='ignore')
             except AttributeError:
                 pass
             except IndexError:
                 pass
             except TypeError:
-                pass        
+                pass   
+            except UnicodeEncodeError:
+                pass #from description     
         if 'server' in r.headers:  #prints server name if present
             print '** Running server ' + r.headers['server'] + ' **'
         if 'etag' in r.headers:
