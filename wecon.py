@@ -22,12 +22,12 @@ print #print a blank line to the console for readability
 for testip in args.ipfile.readlines(): #master loop. iterates through all ip:port combinations try http first then try ssl
     target_count = target_count +1
     if URI:
-        testip = testip.rstrip() + URI
+        testip = testip.strip() + URI
         print 'Searching for URI ' + URI
         
-    print testip.rstrip() + ' <---Target #' + str(target_count)
+    print testip.strip() + ' <---Target #' + str(target_count)
     try:
-        r = requests.get(try_http + testip.rstrip(), verify=False, allow_redirects=True, timeout=5.00)  #makes HTTP connections, gets data
+        r = requests.get(try_http + testip.strip(), verify=False, allow_redirects=True, timeout=4.00)  #makes HTTP connections, gets data
         print r.url
         print 'Status code:', r.status_code
         pprint(r.headers)
@@ -42,9 +42,9 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
                 if 'web_section_id' in r.text:
                     print '** Found internal HP web_section_id **'
                 soup = BeautifulSoup(r.text)
-                print '** Extracted title: ' + soup.title.string.encode('utf8') + ' **'
+                print '** Extracted title: ' + soup.title.string.encode(encoding='utf-8',errors='ignore').strip() + ' **'
                 desc = soup.findAll(attrs={"name":"description"})
-                print '** Extracted Description: ' + str(desc[0]['content']).encode(encoding='utf-8',errors='ignore')
+                print '** Extracted Description: ' + str(desc[0]['content']).encode(encoding='utf-8',errors='ignore').strip() + ' **'
             except AttributeError:
                 pass
             except IndexError:
@@ -56,19 +56,21 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
         if 'server' in r.headers:  #prints server name if present
             print '** Running server ' + r.headers['server'] + ' **'
         if 'etag' in r.headers:
-            print '** HP Internal Application - Found etag in headers ' + r.headers['etag'] + ' **'
+            print '** Internal Application - Found etag in headers ' + r.headers['etag'] + ' **'
         if 'set-cookie' in r.headers:
             print '** Server sent a cookie **'
         if 'www-authenticate' in r.headers:
             print '** Found REALM ' + r.headers['www-authenticate']
     except requests.exceptions.ConnectionError:
-        print 'HTTP Connection to ' + str(testip).rstrip() + ' actively refused'
+        print 'HTTP Connection to ' + str(testip).strip() + ' actively refused'
     except requests.exceptions.ReadTimeout:
-        print 'HTTP Connection to ' + str(testip).rstrip() + ' timed out after 5.00 seconds'
+        print 'HTTP Connection to ' + str(testip).strip() + ' timed out after 4.00 seconds'
+    except requests.exceptions.TooManyRedirects:
+        print 'Too Many Redirections'
     print ':::Attempting SSL handshake:::'
 
     try:
-        r = requests.get(try_SSL + testip.rstrip(), verify=False, allow_redirects=True, timeout=5.00)  #makes SSL connections, gets data
+        r = requests.get(try_SSL + testip.strip(), verify=False, allow_redirects=True, timeout=4.00)  #makes SSL connections, gets data
         print r.url
         print 'Status code:', r.status_code
         pprint(r.headers)
@@ -83,9 +85,9 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
                 if 'web_section_id' in r.text:
                     print '** Found internal HP web_section_id **'
                 soup = BeautifulSoup(r.text)
-                print '** Extracted title: ' + soup.title.string.encode('utf8') + ' **'
+                print '** Extracted title: ' + soup.title.string.encode(encoding='utf-8',errors='ignore').strip() + ' **'
                 desc = soup.findAll(attrs={"name":"description"})
-                print '** Extracted Description: ' + str(desc[0]['content']).encode(encoding='utf-8',errors='ignore')
+                print '** Extracted Description: ' + str(desc[0]['content']).encode(encoding='utf-8',errors='ignore').strip() + ' **'
             except AttributeError:
                 pass
             except IndexError:
@@ -93,11 +95,11 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
             except TypeError:
                 pass   
             except UnicodeEncodeError:
-                pass #from description     
+                pass #    
         if 'server' in r.headers:  #prints server name if present
             print '** Running server ' + r.headers['server'] + ' **'
         if 'etag' in r.headers:
-            print '** HP Internal Application - Found etag in headers ' + r.headers['etag'] + ' **'
+            print '** Internal Application - Found etag in headers ' + r.headers['etag'] + ' **'
         if 'set-cookie' in r.headers:
             print '** Server sent a cookie **'
         if 'www-authenticate' in r.headers:
@@ -105,10 +107,12 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
         print
         #print r.text
     except requests.exceptions.ConnectionError:
-        print 'SSL Connection to ' + str(testip).rstrip() + ' actively refused'
+        print 'SSL Connection to ' + str(testip).strip() + ' actively refused'
         print
     except requests.exceptions.ReadTimeout:
-        print 'SSL Connection to ' + str(testip).rstrip() + ' timed out after 5.00 seconds'
+        print 'SSL Connection to ' + str(testip).strip() + ' timed out after 4.00 seconds'
         print
+    except requests.exceptions.TooManyRedirects:
+        print 'Too Many Redirections'
     print
     print 
