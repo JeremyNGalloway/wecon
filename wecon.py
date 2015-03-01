@@ -30,7 +30,7 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
     testip = testip.strip()
     ip = testip.split(':', 1)[0].strip() #gets ip address from ip:port
     port = testip.split(':', 1)[1].strip() #gets port number from ip:port
-    target_count = target_count +1
+    target_count +=1
     wants_brute = False
     ''' #super slow and lame DNS PTR look up (adds ~5/secs/ip!)
     try:
@@ -70,107 +70,30 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
         print ':::Attempting Plain HTTP Connection:::'
         try:
             r = requests.get(try_http + testip, verify=False, allow_redirects=True, timeout=4.00)  #makes HTTP connections, gets data
-        except requests.exceptions.ConnectionError:
-            print 'HTTP Connection to ' + str(testip).strip() + ' actively refused'
-        except requests.exceptions.ReadTimeout:
-            print 'HTTP Connection to ' + str(testip).strip() + ' timed out after 4.00 seconds'
-        except requests.exceptions.TooManyRedirects:
-            print 'Too Many Redirections'
-            
-
-        print r.url + '\nStatus code: ' + str(r.status_code)
-        print '--Begin raw headers--'
-        pprint(r.headers)
-        print '--End of headers--'
-        print 'Intel parsed from headers:'
-        if r.history:
-            print "\t Followed redirection"  #notifies if request was redirect from server (3XX)
-        if 'server' in r.headers:  #prints server name if present
-            print '\t Server software is ' + r.headers['server'] 
-        if 'etag' in r.headers:
-            print '\t Internal Application - Found etag in headers ' + r.headers['etag']
-        if 'set-cookie' in r.headers:
-            print '\t A delicious Cookie was sent '
-        if r.status_code == '401':
-            print '\t Server demands authentication via 401'
-            wants_brute = True
-        if 'www-authenticate' in r.headers:
-            print '\t Found AUTH REALM ' + r.headers['www-authenticate'] 
-            wants_brute = True
-        #Done processing server headers
+            print r.url + '\nStatus code: ' + str(r.status_code)
+            print '--Begin raw headers--'
+            pprint(r.headers)
+            print '--End of headers--'
+            print 'Intel parsed from headers:'
+            if r.history:
+                print "\t Followed redirection"  #notifies if request was redirect from server (3XX)
+            if 'server' in r.headers:  #prints server name if present
+                print '\t Server software is ' + r.headers['server'] 
+            if 'etag' in r.headers:
+                print '\t Internal Application - Found etag in headers ' + r.headers['etag']
+            if 'set-cookie' in r.headers:
+                print '\t A delicious Cookie was sent '
+            if r.status_code == '401':
+                print '\t Server demands authentication via 401'
+                wants_brute = True
+            if 'www-authenticate' in r.headers:
+                print '\t Found AUTH REALM ' + r.headers['www-authenticate'] 
+                wants_brute = True
 
 
 
-
-
-
-        if r.text:
-            print 'Intel parsed from webpage:'
-            if '401' not in str(r.status_code):
-                if 'password' or 'login' in r.text or r.url:
-                    print '\t Found HTTP password form to brute :>'
-                    wants_brute = True
-            if 'web_section_id' in r.text:
-                    print '\t Found internal HP web_section_id'
-            soup = BeautifulSoup(r.text)
-            try:
-                title = soup.title.string.encode("utf-8")
-                print '\t Title: ' + title
-                h1 = soup.h1.string 
-                print '\t h1 tag ' + h1
-            except AttributeError: 
-                pass #could not find title or h1
-            find_desc = soup.findAll(attrs={"name":"description"})
-            if find_desc:
-                desc = str(find_desc[0]['content'])
-                print '\t Description: ' + desc
-            if wants_brute is True:
-                print 'Candidate for brute force attack >:D'
-
-
-    
-
-    if port not in http_ports: #checks that port doesn't strictly require plain HTTP, bypassing a timeout/refusal error
-        print ':::Attempting SSL handshake:::'
-        addy = try_SSL + testip
-        try:  
-            r = requests.get(addy, headers=custom_headers, verify=False, allow_redirects=True, timeout=4.00)  #makes SSL connections, gets data
-        except requests.exceptions.ConnectionError:
-            print 'SSL Connection to ' + testip + ' actively refused\n\n\n'
-            continue
-        except requests.exceptions.ReadTimeout:
-            print 'SSL Connection to ' + testip + ' timed out after 4.00 seconds\n\n\n'
-            continue
-        except requests.exceptions.TooManyRedirects:
-            print 'Too Many Redirections\n\n\n'
-            continue
-
-
-
-
-        print r.url + '\nStatus code: ' + str(r.status_code)
-        print '--Begin raw headers--'
-        pprint(r.headers)
-        print '--End of headers--'
-        print 'Intel parsed from headers:'
-        if r.history:
-            print "\t Followed redirection"  #notifies if request was redirect from server (3XX)
-        if 'server' in r.headers:  #prints server name if present
-            print '\t Server software is ' + r.headers['server'] 
-        if 'etag' in r.headers:
-            print '\t Internal Application - Found etag in headers ' + r.headers['etag']
-        if 'set-cookie' in r.headers:
-            print '\t A delicious Cookie was sent '
-        if r.status_code == '401':
-            print '\t Server demands authentication via 401'
-            wants_brute = True
-        if 'www-authenticate' in r.headers:
-            print '\t Found AUTH REALM ' + r.headers['www-authenticate'] 
-            wants_brute = True
-        #Done processing server headers
-
-        if r.text:
-            print 'Intel parsed from webpage:'
+            if r.text:
+                print 'Intel parsed from webpage:'
             if '401' not in str(r.status_code):
                 if 'password' or 'login' in r.text or r.url:
                     print '\t Found SSL password form to brute :>'
@@ -191,6 +114,83 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
                 print '\t Description: ' + desc 
             if wants_brute is True:
                 print 'Candidate for brute force attack >:D'
+            #Done processing page text
+
+
+        except requests.exceptions.ConnectionError:
+            print 'HTTP Connection to ' + str(testip).strip() + ' actively refused'
+        except requests.exceptions.ReadTimeout:
+            print 'HTTP Connection to ' + str(testip).strip() + ' timed out after 4.00 seconds'
+        except requests.exceptions.TooManyRedirects:
+            print 'Too Many Redirections'
+        #Done handling connection exceptions
+
+
+    
+
+    if port not in http_ports: #checks that port doesn't strictly require plain HTTP, bypassing a timeout/refusal error
+        print ':::Attempting SSL handshake:::'
+        addy = try_SSL + testip
+        try:  
+            r = requests.get(addy, headers=custom_headers, verify=False, allow_redirects=True, timeout=4.00)  #makes SSL connections
+            print r.url + '\nStatus code: ' + str(r.status_code)
+            print '--Begin raw headers--'
+            pprint(r.headers)
+            print '--End of headers--'
+            print 'Intel parsed from headers:'
+            if r.history:
+                print "\t Followed redirection"  #notifies if request was redirect from server (3XX)
+            if 'server' in r.headers:  #prints server name if present
+                print '\t Server software is ' + r.headers['server'] 
+            if 'etag' in r.headers:
+                print '\t Internal Application - Found etag in headers ' + r.headers['etag']
+            if 'set-cookie' in r.headers:
+                print '\t A delicious Cookie was sent '
+            if r.status_code == '401':
+                print '\t Server demands authentication via 401'
+                wants_brute = True
+            if 'www-authenticate' in r.headers:
+                print '\t Found AUTH REALM ' + r.headers['www-authenticate'] 
+                wants_brute = True
+            #Done processing server headers
+            
+            if r.text:
+                print 'Intel parsed from webpage:'
+            if '401' not in str(r.status_code):
+                if 'password' or 'login' in r.text or r.url:
+                    print '\t Found SSL password form to brute :>'
+                    wants_brute = True
+            if 'web_section_id' in r.text:
+                    print '\t Found internal HP web_section_id'
+            soup = BeautifulSoup(r.text)
+            try:
+                title = soup.title.string.encode("utf-8")
+                print '\t Title: ' + title
+                h1 = soup.h1.string 
+                print '\t h1 tag ' + h1
+            except AttributeError: 
+                pass #could not find title or h1
+            find_desc = soup.findAll(attrs={"name":"description"})
+            if find_desc:
+                desc = str(find_desc[0]['content'])
+                print '\t Description: ' + desc 
+            if wants_brute is True:
+                print 'Candidate for brute force attack >:D'
+            #Done processing page text
+
+
+        except requests.exceptions.ConnectionError:
+            print 'SSL Connection to ' + testip + ' actively refused\n\n\n'
+            continue
+        except requests.exceptions.ReadTimeout:
+            print 'SSL Connection to ' + testip + ' timed out after 4.00 seconds\n\n\n'
+            continue
+        except requests.exceptions.TooManyRedirects:
+            print 'Too Many Redirections\n\n\n'
+            continue
+        #Done handling connection exceptions
+
+        
  
 
 
