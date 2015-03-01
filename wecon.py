@@ -69,7 +69,7 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
     if port not in https_ports: #checks if port strictly requires https
         print ':::Attempting Plain HTTP Connection:::'
         try:
-            r = requests.get(try_http + testip, verify=False, allow_redirects=True, timeout=4.00)  #makes HTTP connections, gets data
+            r = requests.get(try_http + testip, verify=False, allow_redirects=True, timeout=3.00)  #makes HTTP connections, gets data
             print r.url + '\nStatus code: ' + str(r.status_code)
             print '--Begin raw headers--'
             pprint(r.headers)
@@ -78,9 +78,11 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
             if r.history:
                 print "\t Followed redirection"  #notifies if request was redirect from server (3XX)
             if 'server' in r.headers:  #prints server name if present
-                print '\t Server software is ' + r.headers['server'] 
+                print '\t Server software is ' + r.headers['server']
+            if 'x-powered-by' in r.headers:
+                print '\t Server powered by ' + r.headers['x-powered-by'] 
             if 'etag' in r.headers:
-                print '\t Internal Application - Found etag in headers ' + r.headers['etag']
+                print '\t Internal Application - etag ' + r.headers['etag']
             if 'set-cookie' in r.headers:
                 print '\t A delicious Cookie was sent '
             if r.status_code == '401':
@@ -94,33 +96,42 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
 
             if r.text:
                 print 'Intel parsed from webpage:'
-            if '401' not in str(r.status_code):
-                if 'password' or 'login' in r.text or r.url:
-                    print '\t Found SSL password form to brute :>'
-                    wants_brute = True
-            if 'web_section_id' in r.text:
+                if '401' not in str(r.status_code):
+                    if 'password' in r.text:
+                        print '\t Found HTTP password form to brute from site text :>'
+                        wants_brute = True 
+                    elif 'login' in r.text:
+                        print '\t Found HTTP login form to brute from site text :>'
+                        wants_brute = True 
+                    elif 'password' in r.url:
+                        print '\t Found HTTP password form to brute from site URL :>'
+                        wants_brute = True
+                    elif 'login' in r.url:
+                        print '\t Found HTTP password form to brute from site URL :>'
+                        wants_brute = True   
+                if 'web_section_id' in r.text:
                     print '\t Found internal HP web_section_id'
-            soup = BeautifulSoup(r.text)
-            try:
-                title = soup.title.string.encode("utf-8")
-                print '\t Title: ' + title
-                h1 = soup.h1.string 
-                print '\t h1 tag ' + h1
-            except AttributeError: 
-                pass #could not find title or h1
-            find_desc = soup.findAll(attrs={"name":"description"})
-            if find_desc:
-                desc = str(find_desc[0]['content'])
-                print '\t Description: ' + desc 
-            if wants_brute is True:
-                print 'Candidate for brute force attack >:D'
-            #Done processing page text
+                soup = BeautifulSoup(r.text)
+                try:
+                    title = soup.title.string.encode("utf-8").strip()
+                    print '\t Title: ' + title
+                    h1 = soup.h1.string 
+                    if h1:
+                        print '\t h1 tag: ' + h1
+                    find_desc = soup.findAll(attrs={"name":"description"})
+                    if find_desc:
+                        print '\t Description: ' + find_desc[0]['content']
+                    if wants_brute is True:
+                        print 'Candidate for brute force attack >:D'
+                except AttributeError: 
+                    pass #could not find title or h1
+                #Done processing page text
 
 
         except requests.exceptions.ConnectionError:
             print 'HTTP Connection to ' + str(testip).strip() + ' actively refused'
         except requests.exceptions.ReadTimeout:
-            print 'HTTP Connection to ' + str(testip).strip() + ' timed out after 4.00 seconds'
+            print 'HTTP Connection to ' + str(testip).strip() + ' timed out after 3.00 seconds'
         except requests.exceptions.TooManyRedirects:
             print 'Too Many Redirections'
         #Done handling connection exceptions
@@ -132,7 +143,7 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
         print ':::Attempting SSL handshake:::'
         addy = try_SSL + testip
         try:  
-            r = requests.get(addy, headers=custom_headers, verify=False, allow_redirects=True, timeout=4.00)  #makes SSL connections
+            r = requests.get(addy, headers=custom_headers, verify=False, allow_redirects=True, timeout=3.00)  #makes SSL connections
             print r.url + '\nStatus code: ' + str(r.status_code)
             print '--Begin raw headers--'
             pprint(r.headers)
@@ -141,9 +152,11 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
             if r.history:
                 print "\t Followed redirection"  #notifies if request was redirect from server (3XX)
             if 'server' in r.headers:  #prints server name if present
-                print '\t Server software is ' + r.headers['server'] 
+                print '\t Server software is ' + r.headers['server']
+            if 'x-powered-by' in r.headers:
+                print '\t Server powered by ' + r.headers['x-powered-by']
             if 'etag' in r.headers:
-                print '\t Internal Application - Found etag in headers ' + r.headers['etag']
+                print '\t Internal Application - Found etag ' + r.headers['etag']
             if 'set-cookie' in r.headers:
                 print '\t A delicious Cookie was sent '
             if r.status_code == '401':
@@ -156,34 +169,43 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
             
             if r.text:
                 print 'Intel parsed from webpage:'
-            if '401' not in str(r.status_code):
-                if 'password' or 'login' in r.text or r.url:
-                    print '\t Found SSL password form to brute :>'
-                    wants_brute = True
-            if 'web_section_id' in r.text:
+                if '401' not in str(r.status_code):
+                    if 'password' in r.text:
+                        print '\t Found SSL password form to brute from site text :>'
+                        wants_brute = True 
+                    elif 'login' in r.text:
+                        print '\t Found SSL login form to brute from site text :>'
+                        wants_brute = True 
+                    elif 'password' in r.url:
+                        print '\t Found SSL password form to brute from site URL :>'
+                        wants_brute = True
+                    elif 'login' in r.url:
+                        print '\t Found SSL password form to brute from site URL :>'
+                        wants_brute = True   
+                if 'web_section_id' in r.text:
                     print '\t Found internal HP web_section_id'
-            soup = BeautifulSoup(r.text)
-            try:
-                title = soup.title.string.encode("utf-8")
-                print '\t Title: ' + title
-                h1 = soup.h1.string 
-                print '\t h1 tag ' + h1
-            except AttributeError: 
-                pass #could not find title or h1
-            find_desc = soup.findAll(attrs={"name":"description"})
-            if find_desc:
-                desc = str(find_desc[0]['content'])
-                print '\t Description: ' + desc 
-            if wants_brute is True:
-                print 'Candidate for brute force attack >:D'
-            #Done processing page text
+                soup = BeautifulSoup(r.text)
+                try:
+                    title = soup.title.string.encode("utf-8").strip()
+                    print '\t Title: ' + title
+                    h1 = soup.h1.string 
+                    if h1:
+                        print '\t h1 tag: ' + h1
+                    find_desc = soup.findAll(attrs={"name":"description"})
+                    if find_desc:
+                        print '\t Description: ' + find_desc[0]['content']
+                    if wants_brute is True:
+                        print 'Candidate for brute force attack >:D'
+                except AttributeError: 
+                    pass #could not find title or h1
+                #Done processing page text
 
 
         except requests.exceptions.ConnectionError:
             print 'SSL Connection to ' + testip + ' actively refused\n\n\n'
             continue
         except requests.exceptions.ReadTimeout:
-            print 'SSL Connection to ' + testip + ' timed out after 4.00 seconds\n\n\n'
+            print 'SSL Connection to ' + testip + ' timed out after 3.00 seconds\n\n\n'
             continue
         except requests.exceptions.TooManyRedirects:
             print 'Too Many Redirections\n\n\n'
@@ -203,6 +225,7 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
         except socket.error:
             print "\t Shucks, couldn't parse cert\n\n\n" 
             continue
+
         x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
          # malformed cert? [Errno 10054] An existing connection was forcibly closed by the remote host
         print '\t Subject: '
@@ -214,5 +237,5 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
                     print '\t Issuer: '
                     for x in x509.get_issuer().get_components():
                         print '\t\t ' + x[0], x[1]         
-    print 
-    print
+    print '\n\n\n\n\n'
+    
