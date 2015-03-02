@@ -24,9 +24,18 @@ custom_headers = {'User-Agent': 'Mozilla/5.0 (Windows; U; MSIE 7.0; Windows NT 6
 parser = argparse.ArgumentParser(description='Process IP:PORT file') 
 parser.add_argument('ipfile', type=argparse.FileType('r'))
 args = parser.parse_args() #reads first arg as 'ipfile' and treats it as a file 
+host_list = args.ipfile.readlines()
+args.ipfile.close()
+
+
+
+
+
+
+
 
 print #print a blank line to the console for readability
-for testip in args.ipfile.readlines(): #master loop. iterates through all ip:port combinations try http first then try ssl
+for testip in host_list: #master loop. iterates through all ip:port combinations try http first then try ssl
     testip = testip.strip()
     ip = testip.split(':', 1)[0].strip() #gets ip address from ip:port
     port = testip.split(':', 1)[1].strip() #gets port number from ip:port
@@ -69,8 +78,9 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
     if port not in https_ports: #checks if port strictly requires https
         print ':::Attempting Plain HTTP Connection:::'
         try:
-            r = requests.get(try_http + testip, verify=False, allow_redirects=True, timeout=3.00)  #makes HTTP connections, gets data
-            print r.url + '\nStatus code: ' + str(r.status_code)
+            r = requests.get(try_http + testip, verify=False, allow_redirects=True, timeout=3.00, headers=custom_headers)  #makes HTTP connections, gets data   
+            st_code = str(r.status_code)
+            print r.url + '\nStatus code: ' + st_code
             print '--Begin raw headers--'
             pprint(r.headers)
             print '--End of headers--'
@@ -85,29 +95,29 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
                 print '\t Internal Application - etag ' + r.headers['etag']
             if 'set-cookie' in r.headers:
                 print '\t A delicious Cookie was sent '
-            if r.status_code == '401':
+            if '401' in st_code:
                 print '\t Server demands authentication via 401'
                 wants_brute = True
             if 'www-authenticate' in r.headers:
                 print '\t Found AUTH REALM ' + r.headers['www-authenticate'] 
                 wants_brute = True
-
+            #done parsing server headers
 
 
             if r.text:
                 print 'Intel parsed from webpage:'
-                if '401' not in str(r.status_code):
+                if '401' not in st_code:
                     if 'password' in r.text:
-                        print '\t Found HTTP password form to brute from site text :>'
+                        print '\t Found HTTP password form to attack from site text :>'
                         wants_brute = True 
                     elif 'login' in r.text:
-                        print '\t Found HTTP login form to brute from site text :>'
+                        print '\t Found HTTP login form to attack from site text :>'
                         wants_brute = True 
                     elif 'password' in r.url:
-                        print '\t Found HTTP password form to brute from site URL :>'
+                        print '\t Found HTTP password form to attack from site URL :>'
                         wants_brute = True
                     elif 'login' in r.url:
-                        print '\t Found HTTP password form to brute from site URL :>'
+                        print '\t Found HTTP password form to attack from site URL :>'
                         wants_brute = True   
                 if 'web_section_id' in r.text:
                     print '\t Found internal HP web_section_id'
@@ -115,14 +125,12 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
                 try:
                     title = soup.title.string.encode("utf-8").strip()
                     print '\t Title: ' + title
-                    h1 = soup.h1.string 
+                    h1 = soup.h1.string.encode("utf-8").strip() 
                     if h1:
                         print '\t h1 tag: ' + h1
                     find_desc = soup.findAll(attrs={"name":"description"})
                     if find_desc:
                         print '\t Description: ' + find_desc[0]['content']
-                    if wants_brute is True:
-                        print 'Candidate for brute force attack >:D'
                 except AttributeError: 
                     pass #could not find title or h1
                 #Done processing page text
@@ -144,7 +152,8 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
         addy = try_SSL + testip
         try:  
             r = requests.get(addy, headers=custom_headers, verify=False, allow_redirects=True, timeout=3.00)  #makes SSL connections
-            print r.url + '\nStatus code: ' + str(r.status_code)
+            st_code = str(r.status_code)
+            print r.url + '\nStatus code: ' + st_code
             print '--Begin raw headers--'
             pprint(r.headers)
             print '--End of headers--'
@@ -159,7 +168,7 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
                 print '\t Internal Application - Found etag ' + r.headers['etag']
             if 'set-cookie' in r.headers:
                 print '\t A delicious Cookie was sent '
-            if r.status_code == '401':
+            if '401' in st_code:
                 print '\t Server demands authentication via 401'
                 wants_brute = True
             if 'www-authenticate' in r.headers:
@@ -169,18 +178,18 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
             
             if r.text:
                 print 'Intel parsed from webpage:'
-                if '401' not in str(r.status_code):
+                if '401' not in st_code:
                     if 'password' in r.text:
-                        print '\t Found SSL password form to brute from site text :>'
+                        print '\t Found SSL password form to attack from site text :>'
                         wants_brute = True 
                     elif 'login' in r.text:
-                        print '\t Found SSL login form to brute from site text :>'
+                        print '\t Found SSL login form to attack from site text :>'
                         wants_brute = True 
                     elif 'password' in r.url:
-                        print '\t Found SSL password form to brute from site URL :>'
+                        print '\t Found SSL password form to attack from site URL :>'
                         wants_brute = True
                     elif 'login' in r.url:
-                        print '\t Found SSL password form to brute from site URL :>'
+                        print '\t Found SSL password form to attack from site URL :>'
                         wants_brute = True   
                 if 'web_section_id' in r.text:
                     print '\t Found internal HP web_section_id'
@@ -188,54 +197,64 @@ for testip in args.ipfile.readlines(): #master loop. iterates through all ip:por
                 try:
                     title = soup.title.string.encode("utf-8").strip()
                     print '\t Title: ' + title
-                    h1 = soup.h1.string 
+                    h1 = soup.h1.string.encode("utf-8").strip() 
                     if h1:
                         print '\t h1 tag: ' + h1
                     find_desc = soup.findAll(attrs={"name":"description"})
                     if find_desc:
                         print '\t Description: ' + find_desc[0]['content']
-                    if wants_brute is True:
-                        print 'Candidate for brute force attack >:D'
                 except AttributeError: 
                     pass #could not find title or h1
                 #Done processing page text
 
 
+            if r.url:
+                try:
+                    cert = ssl.get_server_certificate((ip, int(port)))
+                    x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
+                    # malformed cert? [Errno 10054] An existing connection was forcibly closed by the remote host
+                    print 'Intel gathered from certificate: '
+                    print '\t Subject: '
+                    for x in x509.get_subject().get_components():
+                        print '\t\t ' + x[0], x[1 ] 
+                    if 'VeriSign' not in str(x509.get_issuer()):
+                        if 'www.samplexyzcorp.com' not in str(x509.get_issuer()):
+                            if 'Entrust' not in str(x509.get_issuer()):
+                                print '\t Issuer: '
+                                for x in x509.get_issuer().get_components():
+                                    print '\t\t ' + x[0], x[1]   
+                except socket.error:
+                    print "Unable to parse certificate" 
+                    pass   
+
+
+
         except requests.exceptions.ConnectionError:
-            print 'SSL Connection to ' + testip + ' actively refused\n\n\n'
-            continue
+            print 'SSL Connection to ' + testip + ' actively refused'
+            pass
         except requests.exceptions.ReadTimeout:
-            print 'SSL Connection to ' + testip + ' timed out after 3.00 seconds\n\n\n'
-            continue
+            print 'SSL Connection to ' + testip + ' timed out after 3.00 seconds'
+            pass
         except requests.exceptions.TooManyRedirects:
-            print 'Too Many Redirections\n\n\n'
-            continue
+            print 'Too Many Redirections'
+            pass
         #Done handling connection exceptions
 
-        
- 
-
-
-
-
-
-        print 'Intel gathered from certificate: '            
-        try:
-            cert = ssl.get_server_certificate((ip, int(port)))
-        except socket.error:
-            print "\t Shucks, couldn't parse cert\n\n\n" 
-            continue
-
-        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
-         # malformed cert? [Errno 10054] An existing connection was forcibly closed by the remote host
-        print '\t Subject: '
-        for x in x509.get_subject().get_components():
-            print '\t\t ' + x[0], x[1 ] 
-        if 'VeriSign' not in str(x509.get_issuer()):
-            if 'www.samplexyzcorp.com' not in str(x509.get_issuer()):
-                if 'Entrust' not in str(x509.get_issuer()):
-                    print '\t Issuer: '
-                    for x in x509.get_issuer().get_components():
-                        print '\t\t ' + x[0], x[1]         
+                    
+   
+           
+    if wants_brute is True: #check to see if the wants_brute bool was ever set
+        print 'Candidate for brute force or injection attack >:D'
     print '\n\n\n\n\n'
+
+
+
+
+
+
+
+
+
+
+
     
