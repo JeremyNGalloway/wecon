@@ -6,10 +6,10 @@ import argparse
 from BeautifulSoup import BeautifulSoup
 from pprint import pprint
 import requests
-import socket #uncomment this line and dns resolve block if attempting DNS PTR look ups (caution)
+import socket 
 import ssl
 import OpenSSL
-
+#-------------------------------------------------------------------------------------------------#
 requests.packages.urllib3.disable_warnings()  #suppress invalid ssl cert warning
 try_http = 'http://'
 try_SSL = 'https://'
@@ -17,27 +17,27 @@ target_count = 0
 URI = '' #'/robots.txt' #check web server for specific URIs such as /cgi-bin, /gdorks, /vuln
 http_ports = ['80','8008','8080','8088']   #known ports that actively refuse SSL
 https_ports = ['443','8443'] #know ports that actively refuse plain HTTP
-common_CAs = ['VeriSign','Entrust', 'samplexyzcorp']
+common_CAs = ['VeriSign','Entrust', 'www.samplexyzcorp.com']
 custom_headers = {'User-Agent': 'Mozilla/5.0 (Windows; U; MSIE 7.0; Windows NT 6.0; en-US)'}
+#-------------------------------------------------------------------------------------------------#
 parser = argparse.ArgumentParser(description='Process IP:PORT file') 
 parser.add_argument('ipfile', type=argparse.FileType('r'))
 args = parser.parse_args() #reads first arg as 'ipfile' and treats it as a file 
 host_list = args.ipfile.readlines()
 args.ipfile.close()
-
-################Begin defining functions################################
+#-------------------------------------------------------------------------------------------------#
 def makeConnection(schema, testip):
     if schema is try_http:
         print ':::Attempting Plain HTTP Connection:::'
     else:
         print ':::Attempting SSL handshake:::'
     try:
-        r = requests.get(schema + testip, verify=False, allow_redirects=True, timeout=3.00, headers=custom_headers)  #makes HTTP connections, gets data   
+        r = requests.get(schema + testip, verify=False, allow_redirects=True, timeout=4.00, headers=custom_headers)  #makes HTTP connections, gets data   
     except requests.exceptions.ConnectionError:
         print 'Connection to ' + (schema+testip) + ' actively refused'
         return None
     except requests.exceptions.ReadTimeout:
-        print 'Connection to ' + (schema+testip) + ' timed out after 3.00 seconds'
+        print 'Connection to ' + (schema+testip) + ' timed out after 4.00 seconds'
         return None
     except requests.exceptions.TooManyRedirects:
         print 'Too Many Redirections'
@@ -105,52 +105,55 @@ def makeSoup(r):
 #Done making and parsing Soup
 
 def processCert(r):
-    if r is not None:
-        try:
-            cert = ssl.get_server_certificate((ip, int(port)))
-            x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
-            # malformed cert? [Errno 10054] An existing connection was forcibly closed by the remote host
-            print 'Intel gathered from certificate: '
-            print '\t Subject: '
-            for x in x509.get_subject().get_components():
-                print '\t\t ' + x[0], x[1 ] 
-            if not ('VeriSign' or 'www.samplexyzcorp.com' or 'Entrust') in str(x509.get_issuer()):
-                        print '\t Issuer: '
-                        for x in x509.get_issuer().get_components():
-                            print '\t\t ' + x[0], x[1]   
-        except socket.error:
-            print "Unable to parse certificate" 
-            pass 
+    try:
+        cert = ssl.get_server_certificate((ip, int(port)))
+        x509 = OpenSSL.crypto.load_certificate(OpenSSL.crypto.FILETYPE_PEM, cert)
+        # malformed cert? [Errno 10054] An existing connection was forcibly closed by the remote host
+        print 'Intel gathered from certificate: '
+        print '\t Subject: '
+        for x in x509.get_subject().get_components():
+            print '\t\t ' + x[0], x[1 ] 
+        if not [ca for ca in common_CAs if ca in str(x509.get_issuer())]:
+            print '\t Issuer: '
+            for x in x509.get_issuer().get_components():
+                print '\t\t ' + x[0], x[1]   
+    except socket.error:
+        print "Unable to parse certificate" 
+        pass 
 #Done parsing server certificate
 
+def canAttack(wants_brute):
+    if wants_brute is True: #check to see if the wants_brute bool was ever changed 
+        print 'Candidate for brute force or injection attack >:D'
 
-print #print a blank line to the console for readability
-for testip in host_list: #master loop. iterates through all ip:port combinations try http first then try ssl
-    testip = testip.strip()
-    ip = testip.split(':', 1)[0].strip() #gets ip address from ip:port
-    port = testip.split(':', 1)[1].strip() #gets port number from ip:port
-    target_count +=1
-    wants_brute = False #bool to track state of attack-ability
-
-    ''' #super slow and lame DNS PTR look up (adds ~5/secs/ip!)
+def dnsResolver(ip):
     try:
-        record = socket.gethostbyaddr(plain_ip)
+        record = socket.gethostbyaddr(ip)
         print str(record)
     except socket.herror:
         pass
-    '''
+#--------------------------------------------------------------------------------------------------#
+print #print a blank line to the console for readability
+for testip in host_list: #master loop. iterates through all ip:port combinations try http first then try ssl
+    target_count +=1
+    wants_brute = False #bool to track state of attack-ability
+    testip = testip.strip()
+    ip = testip.split(':', 1)[0].strip() #gets ip address from ip:port
+    port = testip.split(':', 1)[1].strip() #gets port number from ip:port
+    #dnsResolver(ip) #uncomment to enable DNS PTR look up *adds ~5/secs/ip!*
+
     if URI: #add URI to IP:PORT/URI name for specific webapp look ups
-        testip = testip.strip() + URI
+        testip = testip + URI
         print 'Searching for URI ' + URI
     print testip + ' <---Target #' + str(target_count)
-##############Done processing input file and extra features#########################
+#--------------------------------------------------------------------------------------------------#
 
     if port not in https_ports: #checks if port strictly requires http or https schema
         schema = try_http
         r = makeConnection(schema, testip)
         if r is not None:
-            wants_brute = processHeaders(r)
-            wants_brute = processText(r, wants_brute)
+            wants_brute = processHeaders(r) #runs processHeaders and returns a bool value to wants_brute
+            wants_brute = processText(r, wants_brute) #runs processText and returns a bool value to wants_brute
             makeSoup(r)
 
     if port not in http_ports:
@@ -160,8 +163,22 @@ for testip in host_list: #master loop. iterates through all ip:port combinations
             wants_brute = processHeaders(r)
             wants_brute = processText(r, wants_brute)
             makeSoup(r)
-        processCert(r)
+            processCert(r)
 
-    if wants_brute is True: #check to see if the wants_brute bool was ever set
-        print 'Candidate for brute force or injection attack >:D'
-    print '\n\n\n\n\n'
+    # if port not in https_ports: #checks if port strictly requires http or https schema
+    #     schema = try_http,
+    # if port not in http_ports:
+    #     schema = try_https,
+    # else
+    #     schema = try_http, try_https
+    # for i in schema:
+    #     r = makeConnection(i, testip)
+    #     if r is not None:
+    #         wants_brute = processHeaders(r) #runs processHeaders and returns a bool value to wants_brute
+    #         wants_brute = processText(r, wants_brute) #runs processText and returns a bool value to wants_brute
+    #         makeSoup(r)
+
+
+    canAttack(wants_brute)
+    print '\n\n\n'
+#--------------------------------------------------------------------------------------------------#
