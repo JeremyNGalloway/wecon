@@ -36,6 +36,9 @@ def makeConnection(schema, testip):
     except requests.exceptions.ConnectionError:
         print 'Connection to ' + (schema+testip) + ' actively refused'
         return None
+    except requests.exceptions.ChunkedEncodingError:
+        print 'Connection to ' + (schema+testip) + ' ChunkedEncodingError'
+        return None
     except requests.exceptions.ReadTimeout:
         print 'Connection to ' + (schema+testip) + ' timed out after 4.00 seconds'
         return None
@@ -82,7 +85,10 @@ def processHeaders(r):
 def processText(r, wants_brute):
     st_code = str(r.status_code)
     print 'Intel parsed from webpage:'
-    if ('password' or 'login') in (r.text or r.url):
+    if ('login' in r.text) or ('password' in r.text):
+        print '\t Found password form to attack :>'
+        wants_brute = True  
+    if ('login' in r.url) or ('password' in r.url):
         print '\t Found password form to attack :>'
         wants_brute = True  
     if 'web_section_id' in r.text:
@@ -102,6 +108,10 @@ def makeSoup(r):
             print '\t Description: ' + find_desc[0]['content']
     except AttributeError: 
         pass #could not find title or h1
+    except UnicodeEncodeError:
+        print '\t Description: UnicodeEncodeError'
+        pass
+
 #Done making and parsing Soup
 
 def processCert(r):
@@ -141,7 +151,6 @@ for testip in host_list: #master loop. iterates through all ip:port combinations
     ip = testip.split(':', 1)[0].strip() #gets ip address from ip:port
     port = testip.split(':', 1)[1].strip() #gets port number from ip:port
     #dnsResolver(ip) #uncomment to enable DNS PTR look up *adds ~5/secs/ip!*
-
     if URI: #add URI to IP:PORT/URI name for specific webapp look ups
         testip = testip + URI
         print 'Searching for URI ' + URI
@@ -164,20 +173,6 @@ for testip in host_list: #master loop. iterates through all ip:port combinations
             wants_brute = processText(r, wants_brute)
             makeSoup(r)
             processCert(r)
-
-    # if port not in https_ports: #checks if port strictly requires http or https schema
-    #     schema = try_http,
-    # if port not in http_ports:
-    #     schema = try_https,
-    # else
-    #     schema = try_http, try_https
-    # for i in schema:
-    #     r = makeConnection(i, testip)
-    #     if r is not None:
-    #         wants_brute = processHeaders(r) #runs processHeaders and returns a bool value to wants_brute
-    #         wants_brute = processText(r, wants_brute) #runs processText and returns a bool value to wants_brute
-    #         makeSoup(r)
-
 
     canAttack(wants_brute)
     print '\n\n\n'
