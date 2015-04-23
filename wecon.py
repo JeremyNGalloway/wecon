@@ -111,6 +111,8 @@ def makeSoup(r):
     except UnicodeEncodeError:
         print '\t Description: UnicodeEncodeError'
         pass
+    except: #catch bs4 key errors
+	pass
 
 #Done making and parsing Soup
 
@@ -161,18 +163,23 @@ for testip in host_list: #master loop. iterates through all ip:port combinations
         schema = try_http
         r = makeConnection(schema, testip)
         if r is not None:
-            wants_brute = processHeaders(r) #runs processHeaders and returns a bool value to wants_brute
-            wants_brute = processText(r, wants_brute) #runs processText and returns a bool value to wants_brute
-            makeSoup(r)
-
+            try:
+		wants_brute = processHeaders(r) #runs processHeaders and returns a bool value to wants_brute
+            	wants_brute = processText(r, wants_brute) #runs processText and returns a bool value to wants_brute
+           	makeSoup(r)
+            except:
+		 pass
     if port not in http_ports:
         schema = try_SSL 
         r = makeConnection(schema, testip)
         if r is not None:
-            wants_brute = processHeaders(r)
-            wants_brute = processText(r, wants_brute)
-            makeSoup(r)
-            processCert(r)
+            try:
+		wants_brute = processHeaders(r)
+            	wants_brute = processText(r, wants_brute)
+            	makeSoup(r)
+            	processCert(r)
+	    except:
+		pass
 
     canAttack(wants_brute)
     print '\n\n\n'
